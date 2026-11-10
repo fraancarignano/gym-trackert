@@ -130,6 +130,15 @@
   button:not(:disabled), [role="button"]:not(:disabled) {
     cursor: pointer;
   }
+  /* Celular: sin zoom por doble toque en botones (los +/- se tocan rápido) ni resaltado gris. */
+  a, button, input, select, textarea, label, [role="button"] {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* Sin "rebote" que tire de toda la página al llegar al borde en la app instalada. */
+  html, body {
+    overscroll-behavior-y: none;
+  }
   html {
     @apply font-sans;
   }

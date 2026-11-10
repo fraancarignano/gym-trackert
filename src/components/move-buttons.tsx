@@ -4,7 +4,7 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { MoveDirection } from "@/lib/reorder";
 
-/** Botones subir / bajar para reordenar una lista. */
+/** Botones subir / bajar para reordenar una lista (40×40, cómodos para el pulgar). */
 export function MoveButtons({
   label,
   isFirst,
@@ -19,11 +19,11 @@ export function MoveButtons({
   onMove: (direction: MoveDirection) => void;
 }) {
   return (
-    <div className="flex shrink-0 flex-col">
+    <div className="flex shrink-0">
       <Button
         variant="ghost"
         size="icon"
-        className="h-7 w-10"
+        className="size-10"
         aria-label={`Subir ${label}`}
         disabled={disabled || isFirst}
         onClick={() => onMove("up")}
@@ -33,7 +33,7 @@ export function MoveButtons({
       <Button
         variant="ghost"
         size="icon"
-        className="h-7 w-10"
+        className="size-10"
         aria-label={`Bajar ${label}`}
         disabled={disabled || isLast}
         onClick={() => onMove("down")}
