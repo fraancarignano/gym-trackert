@@ -1,6 +1,7 @@
 "use server";
 
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 
@@ -46,4 +47,44 @@ export async function sendMagicLink(
   }
 
   return { status: "sent", email: parsed.data };
+}
+
+export type CodeState = { error: string | null };
+
+const codeSchema = z.object({
+  email: emailSchema,
+  // Supabase manda códigos de 6 dígitos por defecto (configurable hasta 10).
+  token: z.string().regex(/^\d{6,10}$/, { message: "El código tiene 6 dígitos." }),
+});
+
+/**
+ * Entrar con el código del email en vez del link. Sirve en la app instalada en
+ * iPhone, que no comparte la sesión con Safari: el código se tipea ahí mismo.
+ */
+export async function verifyLoginCode(
+  _prev: CodeState,
+  formData: FormData,
+): Promise<CodeState> {
+  const parsed = codeSchema.safeParse({
+    email: String(formData.get("email") ?? "").trim().toLowerCase(),
+    token: String(formData.get("token") ?? "").replace(/\D/g, ""),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.verifyOtp({
+    email: parsed.data.email,
+    token: parsed.data.token,
+    type: "email",
+  });
+  if (error) {
+    return {
+      error:
+        error.status === 429
+          ? "Demasiados intentos. Esperá unos minutos."
+          : "El código no es válido o ya venció. Pedí uno nuevo.",
+    };
+  }
+
+  redirect("/");
 }
