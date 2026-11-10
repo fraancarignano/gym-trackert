@@ -19,7 +19,7 @@ import { ProgressChart, type ProgressDatum } from "./progress-chart";
 function series(points: ChartPoint[], pick: (p: ChartPoint) => number | null): ProgressDatum[] {
   return points.flatMap((p) => {
     const value = pick(p);
-    return value === null ? [] : [{ workoutId: p.workoutId, startedAt: p.startedAt, value }];
+    return value === null ? [] : [{ id: p.workoutId, startedAt: p.startedAt, value }];
   });
 }
 

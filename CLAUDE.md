@@ -10,7 +10,7 @@ PWA personal, mobile-first, para registrar entrenamientos de gimnasio y ver la p
 - [x] Fase 1: ejercicios y rutinas
 - [x] Fase 2: sesión en vivo e historial
 - [x] Fase 3: progreso y récords
-- [ ] Fase 4: peso y medidas
+- [x] Fase 4: peso y medidas
 - [ ] Fase 5: PWA y deploy en Vercel
 
 ## Stack
@@ -82,6 +82,15 @@ npm test           # vitest run
   - Hay uno por métrica, cada uno con una sola serie: sin leyenda y sin eje doble.
   - Color `--chart-series` (`#3987e5` en oscuro), validado con el skill dataviz.
   - Líneas de 2px con puntos r=4 y un anillo del color de la superficie. Columnas de 24px como máximo, con 4px de radio.
+  - `ProgressChart` recibe `{ id, startedAt, value }[]`. `filterByRange` es genérico sobre `startedAt`.
+- `src/app/(app)/cuerpo/` (`components/body/`):
+  - El último peso, con la diferencia respecto del registro anterior, y la última medida de cada tipo (pueden ser de fechas distintas).
+  - El gráfico de peso con rango y la lista de registros.
+  - El diálogo para registrar, editar y borrar: peso con +/- de a 0,1 kg y medidas de a 0,5 cm.
+  - Lógica pura en `src/lib/calc/body.ts`. Las Server Actions en `cuerpo/actions.ts`.
+- Fechas sin hora (`body_metrics.measured_on`):
+  - Se tratan como texto `aaaa-mm-dd`: `formatIsoDate`, `todayIsoDate` (hoy en Córdoba) y `isoDateToTimestamp`, que da el mediodía UTC para los gráficos.
+  - Nunca hacer `new Date("aaaa-mm-dd")`: lo toma como medianoche UTC y en Córdoba queda el día anterior.
 - Componentes reutilizables:
   - `NumberStepper` (− / + grande con teclado numérico, enteros).
   - `ValueStepper` (− / + basado en texto, con coma decimal; para peso y reps).

@@ -41,6 +41,30 @@ export function formatDate(value: string | Date): string {
   return dateFormat.format(new Date(value));
 }
 
+/** Fecha sin hora ("2026-11-10", columnas `date`) a "10/11/2026", sin pasar por zonas horarias. */
+export function formatIsoDate(isoDate: string): string {
+  const [year, month, day] = isoDate.slice(0, 10).split("-");
+  return `${day}/${month}/${year}`;
+}
+
+/**
+ * Fecha sin hora a un instante del mediodía UTC de ese día, para usarla donde se
+ * espera un timestamp (gráficos, rangos) sin que la zona horaria la corra de día.
+ */
+export function isoDateToTimestamp(isoDate: string): string {
+  return `${isoDate.slice(0, 10)}T12:00:00Z`;
+}
+
+/** Hoy en Córdoba como "aaaa-mm-dd" (para inputs de fecha y columnas `date`). */
+export function todayIsoDate(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+}
+
 /** "lun 10/11/2026" */
 export function formatDateWithWeekday(value: string | Date): string {
   const weekday = weekdayFormat.format(new Date(value)).replace(".", "");

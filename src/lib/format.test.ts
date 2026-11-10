@@ -3,7 +3,10 @@ import {
   formatDate,
   formatDuration,
   formatElapsed,
+  formatIsoDate,
   formatSet,
+  isoDateToTimestamp,
+  todayIsoDate,
   formatTime,
   formatWeight,
   parseDecimal,
@@ -27,6 +30,18 @@ describe("fechas en hora de Córdoba", () => {
 
   it("formatTime en 24 h", () => {
     expect(formatTime(lateNight)).toBe("23:30");
+  });
+});
+
+describe("fechas sin hora", () => {
+  it("formatIsoDate no se corre de día por la zona horaria", () => {
+    expect(formatIsoDate("2026-11-10")).toBe("10/11/2026");
+    expect(formatDate(isoDateToTimestamp("2026-11-10"))).toBe("10/11/2026");
+  });
+
+  it("todayIsoDate usa la fecha de Córdoba", () => {
+    // 02:30 UTC del 11/11 todavía es 10/11 en Argentina.
+    expect(todayIsoDate(new Date("2026-11-11T02:30:00Z"))).toBe("2026-11-10");
   });
 });
 

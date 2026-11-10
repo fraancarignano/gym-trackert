@@ -13,7 +13,8 @@ import {
 } from "recharts";
 import { formatDate, formatNumber } from "@/lib/format";
 
-export type ProgressDatum = { workoutId: string; startedAt: string; value: number };
+/** Un punto: `id` único (sesión o medición), `startedAt` timestamp ISO y el valor. */
+export type ProgressDatum = { id: string; startedAt: string; value: number };
 
 const SERIES = "var(--chart-series)";
 const GRID = "var(--border)";
@@ -35,14 +36,16 @@ export function ProgressChart({
   data,
   unit,
   kind = "line",
+  lastLabel = "Última",
 }: {
   title: string;
   data: ProgressDatum[];
   unit: string;
   kind?: "line" | "bar";
+  lastLabel?: string;
 }) {
   const last = data.at(-1);
-  const byId = new Map(data.map((d) => [d.workoutId, d]));
+  const byId = new Map(data.map((d) => [d.id, d]));
   const tick = (id: string) => {
     const d = byId.get(id);
     return d ? shortDate.format(new Date(d.startedAt)) : "";
@@ -58,7 +61,7 @@ export function ProgressChart({
       content={({ active, payload }) => (
         <ChartTooltip
           active={active}
-          workoutId={payload?.[0]?.payload?.workoutId}
+          pointId={payload?.[0]?.payload?.id}
           unit={unit}
           byId={byId}
         />
@@ -78,7 +81,7 @@ export function ProgressChart({
         <span className="font-medium">{title}</span>
         {last && (
           <span className="text-sm text-muted-foreground tabular-nums">
-            Última: <span className="font-semibold text-foreground">{formatNumber(last.value)} {unit}</span>
+            {lastLabel}: <span className="font-semibold text-foreground">{formatNumber(last.value)} {unit}</span>
           </span>
         )}
       </figcaption>
@@ -88,7 +91,7 @@ export function ProgressChart({
           {kind === "bar" ? (
             <BarChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: 0 }}>
               <CartesianGrid vertical={false} stroke={GRID} />
-              <XAxis dataKey="workoutId" tickFormatter={tick} minTickGap={16} {...axisProps} />
+              <XAxis dataKey="id" tickFormatter={tick} minTickGap={16} {...axisProps} />
               <YAxis
                 width={48}
                 tickFormatter={(v: number) => formatNumber(v)}
@@ -107,7 +110,7 @@ export function ProgressChart({
           ) : (
             <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
               <CartesianGrid vertical={false} stroke={GRID} />
-              <XAxis dataKey="workoutId" tickFormatter={tick} minTickGap={16} {...axisProps} />
+              <XAxis dataKey="id" tickFormatter={tick} minTickGap={16} {...axisProps} />
               <YAxis
                 width={48}
                 domain={["auto", "auto"]}
@@ -136,17 +139,17 @@ export function ProgressChart({
 
 function ChartTooltip({
   active,
-  workoutId,
+  pointId,
   unit,
   byId,
 }: {
   active?: boolean;
-  workoutId?: unknown;
+  pointId?: unknown;
   unit: string;
   byId: Map<string, ProgressDatum>;
 }) {
-  if (!active || typeof workoutId !== "string") return null;
-  const datum = byId.get(workoutId);
+  if (!active || typeof pointId !== "string") return null;
+  const datum = byId.get(pointId);
   if (!datum) return null;
   return (
     <div className="rounded-lg border border-border bg-popover px-3 py-2 text-sm shadow-md">

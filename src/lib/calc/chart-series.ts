@@ -41,11 +41,11 @@ export function buildChartSeries(sessions: readonly ExerciseSession[]): ChartPoi
 }
 
 /** Puntos dentro del rango, contando hacia atrás desde `now`. */
-export function filterByRange(
-  points: readonly ChartPoint[],
+export function filterByRange<T extends { startedAt: string }>(
+  points: readonly T[],
   range: ChartRange,
   now: Date = new Date(),
-): ChartPoint[] {
+): T[] {
   const months = CHART_RANGES.find((r) => r.value === range)?.months ?? null;
   if (months === null) return [...points];
   const from = new Date(now);

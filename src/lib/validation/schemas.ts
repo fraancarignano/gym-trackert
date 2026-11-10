@@ -62,6 +62,31 @@ export const setValuesSchema = z.object({
 });
 export type SetValuesInput = z.input<typeof setValuesSchema>;
 
+const bodyValue = (min: number, max: number, label: string) =>
+  z
+    .number({ message: `${label}: ingresá un número.` })
+    .min(min, { message: `${label}: mínimo ${min}.` })
+    .max(max, { message: `${label}: máximo ${max}.` })
+    .transform((v) => Math.round(v * 100) / 100)
+    .nullable();
+
+/** Medición corporal: fecha (no futura) y al menos un valor. Peso en kg, medidas en cm. */
+export const bodyMetricSchema = z
+  .object({
+    measuredOn: z.iso.date({ message: "Elegí una fecha válida." }),
+    weightKg: bodyValue(20, 400, "Peso"),
+    waistCm: bodyValue(20, 300, "Cintura"),
+    chestCm: bodyValue(20, 300, "Pecho"),
+    armCm: bodyValue(10, 150, "Brazo"),
+    thighCm: bodyValue(10, 200, "Muslo"),
+    hipCm: bodyValue(20, 300, "Cadera"),
+  })
+  .refine(
+    (m) => [m.weightKg, m.waistCm, m.chestCm, m.armCm, m.thighCm, m.hipCm].some((v) => v !== null),
+    { message: "Cargá al menos el peso o una medida." },
+  );
+export type BodyMetricInput = z.input<typeof bodyMetricSchema>;
+
 /** Primer mensaje de error de un safeParse fallido. */
 export function firstIssue(error: z.ZodError): string {
   return error.issues[0]?.message ?? "Datos inválidos.";

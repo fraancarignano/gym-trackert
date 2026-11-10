@@ -14,7 +14,7 @@ type Supabase = Awaited<ReturnType<typeof requireUser>>["supabase"];
 const PAGE_SIZE = 1000; // Límite de filas por request de la API de Supabase.
 
 /** Trae todas las páginas de una consulta (la API corta en 1000 filas). */
-async function fetchAll<T>(
+export async function fetchAll<T>(
   page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
 ): Promise<T[]> {
   const rows: T[] = [];
