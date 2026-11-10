@@ -8,7 +8,7 @@ PWA personal, mobile-first, para registrar entrenamientos de gimnasio y ver la p
 
 - [x] Fase 0: base del proyecto (Next.js, shadcn/ui, Supabase, schema + RLS, seed, magic link, navegación inferior)
 - [x] Fase 1: ejercicios y rutinas
-- [ ] Fase 2: sesión en vivo e historial
+- [x] Fase 2: sesión en vivo e historial
 - [ ] Fase 3: progreso y récords
 - [ ] Fase 4: peso y medidas
 - [ ] Fase 5: PWA y deploy en Vercel
@@ -47,13 +47,32 @@ npm test           # vitest run
   - `[id]/agregar/`: catálogo en modo selección.
   - `ejercicios/`: catálogo en modo navegación.
   - Las Server Actions están en `rutinas/actions.ts` y `rutinas/ejercicios/actions.ts`.
-- `src/components/exercises/exercise-catalog.tsx`: catálogo reutilizable, con `mode: "browse" | "pick"`. Busca sin distinguir tildes y filtra por grupo muscular. También se va a usar en la sesión en vivo para agregar ejercicios.
+- `src/components/exercises/exercise-catalog.tsx`: catálogo reutilizable, con `mode: "browse" | "pick"`. Busca sin distinguir tildes y filtra por grupo muscular. En modo `pick` recibe `onConfirm(ids)`: una Server Action bindeada en el editor de rutina, o una función del cliente en la sesión en vivo.
+- `src/app/(app)/page.tsx` (Inicio):
+  - Si hay una sesión en curso, muestra el banner "Retomar entrenamiento" y oculta las opciones para empezar.
+  - Si no, muestra las rutinas activas y "Sesión libre", que llaman a `startWorkout`.
+  - Abajo, el resumen del último entrenamiento.
+- `src/app/entrenar/` (pantalla completa, fuera de `(app)`):
+  - `[workoutId]/`: sesión en vivo. El componente cliente es `components/workout/live-workout.tsx` y lleva su propio estado de filas.
+  - `[workoutId]/resumen/`: resumen al terminar.
+  - `actions.ts`: Server Actions de la sesión. Las de series no revalidan; empezar, terminar y descartar sí.
+- `src/app/(app)/historial/`: lista de sesiones terminadas y `[id]/` con el detalle editable (`components/history/workout-editor.tsx`). Las Server Actions de `historial/actions.ts` revalidan.
+- `src/lib/workout-sets.ts`: guardar, agregar y borrar series, compartido por la sesión en vivo y el historial.
+- `src/lib/data/workouts.ts`: lecturas de sesiones. `loadLiveExercises()` arma cada ejercicio con su objetivo (de la rutina), la vez anterior (`get_last_sets`) y lo ya confirmado.
+- `src/lib/calc/prefill.ts`: reglas de precarga (`buildInitialRows`, `suggestSet`, `plannedRowCount`).
+- `src/lib/calc/volume.ts`: volumen.
+- `src/lib/format.ts`: formato es-AR (coma decimal, fechas en hora de Córdoba) y `parseDecimal`/`toInputValue` para inputs.
 - `src/lib/data/`: lecturas del servidor (`server-only`). Arrancan con `requireUser()` (`src/lib/auth.ts`) y devuelven tipos de dominio en camelCase.
 - `src/lib/validation/schemas.ts`: esquemas Zod compartidos entre cliente y Server Actions.
 - `src/lib/action-result.ts`: las Server Actions que se llaman desde eventos devuelven `ActionResult` (`{ ok, data } | { ok: false, error }`) y no tiran excepciones.
 - `src/lib/calc/`: cálculos puros (1RM, volumen, récords, rutina sugerida), con tests `*.test.ts`.
 - Componentes reutilizables:
-  - `NumberStepper` (− / + grande con teclado numérico).
+  - `NumberStepper` (− / + grande con teclado numérico, enteros).
+  - `ValueStepper` (− / + basado en texto, con coma decimal; para peso y reps).
+  - `ElapsedTimer`.
+  - `WorkoutStats`.
+  - `SetEditDialog`.
+  - `ErrorView` (usado por los `error.tsx`, que en esta versión de Next reciben `retry`).
   - `NativeSelect`.
   - `ConfirmDialog`.
   - `MoveButtons`.
@@ -81,6 +100,15 @@ npm test           # vitest run
 ## Base de datos
 
 - Todo cambio de schema se hace por el MCP de Supabase con `apply_migration`. El mismo SQL se guarda en `supabase/migrations/` y se muestra a Franco **antes** de aplicarlo.
+- **Limitación del MCP:**
+  - `apply_migration` y `execute_sql` rechazan solos ("declined") el SQL que contiene `DELETE`, aunque esté dentro del cuerpo de una función.
+  - En ese caso Franco lo corre a mano en el SQL Editor de Supabase. Después se verifica con el MCP, se regeneran los tipos y se corre el advisor.
+  - Esas migraciones no figuran en `list_migrations`; el archivo lo aclara en su encabezado (ej. `20261110150317_workout_functions.sql`).
+- Funciones (todas `SECURITY INVOKER`, `search_path = ''`, solo `authenticated`):
+  - `start_workout(routine_id)`: crea la sesión y copia los ejercicios de la rutina.
+  - `finish_workout(id)`: saca los ejercicios sin series y renumera las series. Si no quedan series, borra la sesión y devuelve `'discarded'`.
+  - `delete_workout_set(id)`: borra la serie y renumera las siguientes.
+  - `get_last_sets(exercise_ids, exclude_workout_id)`: series de la última sesión terminada de cada ejercicio.
 - Después de cada migración: regenerar los tipos con `generate_typescript_types` y guardarlos en `database.types.ts`, y correr `get_advisors` (security) para corregir lo que marque.
 - Nunca usar la service role key ni desactivar RLS.
 - Las 7 tablas tienen RLS. `anon` no tiene permisos; `authenticated` tiene CRUD filtrado por las políticas. Las tablas hijas verifican la propiedad a través del padre con `exists (...)`.
@@ -93,6 +121,15 @@ npm test           # vitest run
   - Un registro por fecha en `body_metrics`.
   - Los nombres de ejercicio son únicos sin distinguir mayúsculas.
 - Los récords y estadísticas no se guardan: se calculan desde `workout_sets`.
+
+## Sesión en vivo (decisiones)
+
+- **Filas por ejercicio:** `target_sets` de la rutina. Sin objetivo (sesión libre o ejercicio agregado en la sesión), las series de la vez anterior, o 1 si nunca se hizo.
+- **Filas sin confirmar:** son solo estado del cliente. Al retomar, se rearman con lo confirmado más la precarga.
+- **Número de serie:** cada fila guarda su serie con `set_number` = número de fila, así que se pueden confirmar salteadas. `finish_workout` las renumera 1..n.
+- **Quitar serie:** quita la última fila. Si estaba confirmada, la borra después de pedir confirmación. Un ejercicio solo se puede quitar de la sesión si no tiene series confirmadas.
+- **Peso corporal:** si el ejercicio es de peso corporal y no tiene historial, el peso arranca en 0.
+- **Botones +/-:** peso de a 2,5 kg (`WEIGHT_STEP_KG`) y reps de a 1.
 
 ## Fuera de alcance (no implementar)
 

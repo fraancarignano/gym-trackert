@@ -22,6 +22,9 @@ export const EQUIPMENT = [
 ] as const;
 export type Equipment = (typeof EQUIPMENT)[number];
 
+/** Paso de los botones +/- de peso en la sesión en vivo. */
+export const WEIGHT_STEP_KG = 2.5;
+
 /** Objetivo por defecto al agregar un ejercicio a una rutina: 3 × 8–12. */
 export const DEFAULT_TARGET = { sets: 3, repsMin: 8, repsMax: 12 } as const;
 

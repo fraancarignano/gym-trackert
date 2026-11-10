@@ -3,12 +3,12 @@
 import { useMemo, useState, useTransition } from "react";
 import { Archive, Check, Search, SearchX, X } from "lucide-react";
 import { toast } from "sonner";
-import { addRoutineExercises } from "@/app/(app)/rutinas/actions";
 import { archiveExercise } from "@/app/(app)/rutinas/ejercicios/actions";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import type { ActionResult } from "@/lib/action-result";
 import { MUSCLE_GROUPS, type MuscleGroup } from "@/lib/constants";
 import type { CatalogExercise } from "@/lib/data/exercises";
 import { normalizeText } from "@/lib/text";
@@ -20,9 +20,13 @@ type Props =
   | {
       mode: "pick";
       exercises: CatalogExercise[];
-      routineId: string;
-      /** Ejercicios que ya están en la rutina. */
+      /** Ejercicios que ya están (en la rutina o en la sesión). */
       excludedIds: string[];
+      excludedLabel?: string;
+      /** Recibe los ids elegidos. Si devuelve un error, se muestra en un toast. */
+      onConfirm: (exerciseIds: string[]) => Promise<ActionResult<unknown> | void>;
+      /** Si hay navegación inferior, el botón flotante se ubica arriba de ella. */
+      hasBottomNav?: boolean;
     };
 
 export function ExerciseCatalog(props: Props) {
@@ -68,10 +72,9 @@ export function ExerciseCatalog(props: Props) {
 
   function handleAdd() {
     if (props.mode !== "pick" || selected.length === 0) return;
-    const { routineId } = props;
+    const { onConfirm } = props;
     startTransition(async () => {
-      // Si sale bien, la acción redirige al editor de la rutina.
-      const result = await addRoutineExercises(routineId, selected);
+      const result = await onConfirm(selected);
       if (result && !result.ok) toast.error(result.error);
     });
   }
@@ -168,6 +171,9 @@ export function ExerciseCatalog(props: Props) {
                       key={exercise.id}
                       exercise={exercise}
                       inRoutine={excluded.has(exercise.id)}
+                      excludedLabel={
+                        (props.mode === "pick" && props.excludedLabel) || "En la rutina"
+                      }
                       selected={selected.includes(exercise.id)}
                       onToggle={() => toggle(exercise.id)}
                     />
@@ -186,8 +192,15 @@ export function ExerciseCatalog(props: Props) {
         </div>
       )}
 
-      {mode === "pick" && (
-        <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom)+0.75rem)] z-30 mt-2">
+      {props.mode === "pick" && (
+        <div
+          className={cn(
+            "sticky z-30 mt-2",
+            props.hasBottomNav === false
+              ? "bottom-[calc(env(safe-area-inset-bottom)+0.75rem)]"
+              : "bottom-[calc(4rem+env(safe-area-inset-bottom)+0.75rem)]",
+          )}
+        >
           <Button
             size="xl"
             className="w-full shadow-lg"
@@ -255,11 +268,13 @@ function BrowseRow({
 function PickRow({
   exercise,
   inRoutine,
+  excludedLabel,
   selected,
   onToggle,
 }: {
   exercise: CatalogExercise;
   inRoutine: boolean;
+  excludedLabel: string;
   selected: boolean;
   onToggle: () => void;
 }) {
@@ -278,7 +293,7 @@ function PickRow({
       >
         <ExerciseInfo exercise={exercise} />
         {inRoutine ? (
-          <span className="shrink-0 text-sm text-muted-foreground">En la rutina</span>
+          <span className="shrink-0 text-sm text-muted-foreground">{excludedLabel}</span>
         ) : (
           <span
             aria-hidden

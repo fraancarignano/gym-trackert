@@ -47,6 +47,21 @@ export type TargetInput = z.infer<typeof targetSchema>;
 
 export const moveDirectionSchema = z.enum(["up", "down"]);
 
+/** Peso y reps de una serie: peso ≥ 0 (0 = peso corporal) con hasta 2 decimales, reps > 0. */
+export const setValuesSchema = z.object({
+  weightKg: z
+    .number({ message: "Completá el peso." })
+    .min(0, { message: "El peso no puede ser negativo." })
+    .max(9999.99, { message: "El peso es demasiado alto." })
+    .transform((kg) => Math.round(kg * 100) / 100),
+  reps: z
+    .number({ message: "Completá las reps." })
+    .int({ message: "Las reps tienen que ser un número entero." })
+    .min(1, { message: "Las reps tienen que ser al menos 1." })
+    .max(999, { message: "Demasiadas reps." }),
+});
+export type SetValuesInput = z.input<typeof setValuesSchema>;
+
 /** Primer mensaje de error de un safeParse fallido. */
 export function firstIssue(error: z.ZodError): string {
   return error.issues[0]?.message ?? "Datos inválidos.";

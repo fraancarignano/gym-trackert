@@ -278,7 +278,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      delete_workout_set: { Args: { p_set_id: string }; Returns: undefined }
+      finish_workout: { Args: { p_workout_id: string }; Returns: string }
+      get_last_sets: {
+        Args: { p_exclude_workout_id?: string; p_exercise_ids: string[] }
+        Returns: {
+          exercise_id: string
+          reps: number
+          set_number: number
+          started_at: string
+          weight_kg: number
+          workout_id: string
+        }[]
+      }
+      start_workout: { Args: { p_routine_id?: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never

@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/page-header";
 import { getCatalog } from "@/lib/data/exercises";
 import { getRoutine } from "@/lib/data/routines";
 import { idSchema } from "@/lib/validation/schemas";
+import { addRoutineExercises } from "../../actions";
 
 export const metadata: Metadata = { title: "Agregar ejercicios · Gym Tracker" };
 
@@ -46,7 +47,7 @@ async function AddExercises({
       </p>
       <ExerciseCatalog
         mode="pick"
-        routineId={routine.id}
+        onConfirm={addRoutineExercises.bind(null, routine.id)}
         excludedIds={routine.exercises.map((e) => e.exerciseId)}
         exercises={exercises}
       />
