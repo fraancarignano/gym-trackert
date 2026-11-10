@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -22,13 +23,28 @@ const TABS: Tab[] = [
   { href: "/cuerpo", label: "Cuerpo", icon: Scale },
 ];
 
-function isActive(pathname: string, href: string) {
+function isActive(pathname: string | null, href: string) {
+  if (pathname === null) return false;
   return href === "/" ? pathname === "/" : pathname.startsWith(href);
 }
 
+/**
+ * Navegación inferior fija. La pestaña activa depende de la URL, que en rutas
+ * dinámicas solo se conoce en runtime: mientras tanto se muestra sin marcar.
+ */
 export function BottomNav() {
-  const pathname = usePathname();
+  return (
+    <Suspense fallback={<NavBar pathname={null} />}>
+      <ActiveNavBar />
+    </Suspense>
+  );
+}
 
+function ActiveNavBar() {
+  return <NavBar pathname={usePathname()} />;
+}
+
+function NavBar({ pathname }: { pathname: string | null }) {
   return (
     <nav
       aria-label="Navegación principal"

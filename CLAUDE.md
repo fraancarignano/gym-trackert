@@ -7,7 +7,7 @@ PWA personal, mobile-first, para registrar entrenamientos de gimnasio y ver la p
 ## Estado
 
 - [x] Fase 0: base del proyecto (Next.js, shadcn/ui, Supabase, schema + RLS, seed, magic link, navegación inferior)
-- [ ] Fase 1: ejercicios y rutinas
+- [x] Fase 1: ejercicios y rutinas
 - [ ] Fase 2: sesión en vivo e historial
 - [ ] Fase 3: progreso y récords
 - [ ] Fase 4: peso y medidas
@@ -36,9 +36,30 @@ npm test           # vitest run
 - `src/lib/supabase/server.ts` (Server Components / Actions / Route Handlers) y `client.ts` (navegador). Crear un cliente por request. Nunca usar `getSession()` en el servidor para autorizar: usar `getClaims()` o `getUser()`.
 - `src/lib/supabase/database.types.ts`: generado, no editar a mano.
 - `src/app/(auth)/login`: magic link (Server Action `sendMagicLink`).
-- `src/app/auth/confirm/route.ts`: destino del magic link. Acepta `token_hash` + `type` (plantilla de email personalizada, sirve aunque el link se abra en otro dispositivo) y `code` (PKCE).
+- `src/app/auth/confirm/route.ts`: destino del magic link.
+  - Acepta `code` (PKCE). Es lo que manda la plantilla por defecto: el link se tiene que abrir en el mismo navegador donde se pidió.
+  - También acepta `token_hash` + `type`, que requiere una plantilla personalizada. Supabase solo deja editar plantillas con SMTP propio, que todavía no está configurado.
 - `src/app/(app)/`: layout con la navegación inferior (`components/bottom-nav.tsx`) y las pestañas Inicio, Rutinas, Progreso, Historial y Cuerpo. La sesión en vivo (`entrenar/[workoutId]`) va fuera de este grupo, en pantalla completa sin navegación.
+- `src/app/(app)/rutinas/`:
+  - `page.tsx`: lista de rutinas, que se reordena con subir/bajar y tiene una sección de archivadas para restaurarlas.
+  - `nueva/`: crear rutina.
+  - `[id]/`: editor (ejercicios con objetivo, datos, archivar).
+  - `[id]/agregar/`: catálogo en modo selección.
+  - `ejercicios/`: catálogo en modo navegación.
+  - Las Server Actions están en `rutinas/actions.ts` y `rutinas/ejercicios/actions.ts`.
+- `src/components/exercises/exercise-catalog.tsx`: catálogo reutilizable, con `mode: "browse" | "pick"`. Busca sin distinguir tildes y filtra por grupo muscular. También se va a usar en la sesión en vivo para agregar ejercicios.
+- `src/lib/data/`: lecturas del servidor (`server-only`). Arrancan con `requireUser()` (`src/lib/auth.ts`) y devuelven tipos de dominio en camelCase.
+- `src/lib/validation/schemas.ts`: esquemas Zod compartidos entre cliente y Server Actions.
+- `src/lib/action-result.ts`: las Server Actions que se llaman desde eventos devuelven `ActionResult` (`{ ok, data } | { ok: false, error }`) y no tiran excepciones.
 - `src/lib/calc/`: cálculos puros (1RM, volumen, récords, rutina sugerida), con tests `*.test.ts`.
+- Componentes reutilizables:
+  - `NumberStepper` (− / + grande con teclado numérico).
+  - `NativeSelect`.
+  - `ConfirmDialog`.
+  - `MoveButtons`.
+  - `PageHeader` (con `backHref`).
+  - `EmptyState`.
+  - `ListSkeleton`.
 - `supabase/migrations/`: un archivo por migración aplicada, `<version>_<nombre>.sql`, donde la versión es la que devuelve `list_migrations`. `supabase/seed.sql` es el catálogo global (44 ejercicios).
 
 ## Convenciones
@@ -48,7 +69,14 @@ npm test           # vitest run
 - Siempre modo oscuro (`<html class="dark">`). No hay selector de tema.
 - Fechas en `America/Argentina/Cordoba`, formato dd/mm/aaaa. Peso en kg con hasta 2 decimales, medidas en cm.
 - Lecturas en Server Components; escrituras en Server Actions validadas con Zod.
-- Cache Components: leer cookies (o sea, cualquier consulta a Supabase en el servidor) solo dentro de un `<Suspense>`. Si no, el build falla. No hacer `await` de datos de sesión en el nivel superior de un layout.
+- Cache Components:
+  - Leer cookies (o sea, cualquier consulta a Supabase en el servidor), `params` o `usePathname()` solo dentro de un `<Suspense>`. Si no, el build falla.
+  - Patrón de página: el `page.tsx` es síncrono (encabezado + `<Suspense>`) y le pasa la promesa de `params` a un componente async adentro del boundary.
+  - No hacer `await` de datos de sesión en el nivel superior de un layout.
+- Después de mutar, las Server Actions llaman a `revalidatePath("/", "layout")`. La app es de un solo usuario y tiene pocas rutas, así que se refresca todo.
+- Reordenar: `moveItem()` (`src/lib/reorder.ts`) en el cliente (con `useOptimistic`) y en el servidor, que reescribe `position` como 0..n-1.
+- Shadcn usa Base UI: para componer, usar la prop `render` en vez de `asChild`. Si `shadcn add` pide sobrescribir `button.tsx`, después hay que volver a agregar la variante `size="xl"`.
+- Archivos con barras invertidas (regex, escapes): escribirlos con la herramienta de edición, no con heredocs de bash, porque bash se come las barras.
 
 ## Base de datos
 
