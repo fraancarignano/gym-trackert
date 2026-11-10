@@ -11,7 +11,18 @@ PWA personal, mobile-first, para registrar entrenamientos de gimnasio y ver la p
 - [x] Fase 2: sesión en vivo e historial
 - [x] Fase 3: progreso y récords
 - [x] Fase 4: peso y medidas
-- [ ] Fase 5: PWA y deploy en Vercel
+- [x] Fase 5: PWA y deploy en Vercel
+
+**V1 completa.** La V2 (sugerencias con IA, timer de descanso, offline, exportar) no se implementa sin que Franco lo pida.
+
+## Deploy
+
+- **Producción:** https://gym-trackert.vercel.app (Vercel, conectado al repo `github.com/fraancarignano/gym-trackert`). Cada push a `main` despliega.
+- **Variables de entorno en Vercel:** `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (las mismas de `.env.local`).
+- **Supabase Auth:**
+  - Site URL: el dominio de producción. Redirect URLs: el dominio de producción y `http://localhost:3000/**`.
+  - SMTP propio con Resend (`smtp.resend.com`, remitente `onboarding@resend.dev`). Sin dominio verificado, Resend solo manda mails al email de la cuenta, que es el de Franco.
+  - La plantilla **Magic Link** incluye `{{ .Token }}` (el código) y `{{ .ConfirmationURL }}` (el link).
 
 ## Stack
 
@@ -35,10 +46,16 @@ npm test           # vitest run
 - `src/proxy.ts` + `src/lib/supabase/proxy.ts`: en Next 16, `middleware` pasó a llamarse **proxy**. Refresca la sesión con `getClaims()` y redirige a `/login` en todas las rutas salvo `/login` y `/auth/*`.
 - `src/lib/supabase/server.ts` (Server Components / Actions / Route Handlers) y `client.ts` (navegador). Crear un cliente por request. Nunca usar `getSession()` en el servidor para autorizar: usar `getClaims()` o `getUser()`.
 - `src/lib/supabase/database.types.ts`: generado, no editar a mano.
-- `src/app/(auth)/login`: magic link (Server Action `sendMagicLink`).
-- `src/app/auth/confirm/route.ts`: destino del magic link.
-  - Acepta `code` (PKCE). Es lo que manda la plantilla por defecto: el link se tiene que abrir en el mismo navegador donde se pidió.
-  - También acepta `token_hash` + `type`, que requiere una plantilla personalizada. Supabase solo deja editar plantillas con SMTP propio, que todavía no está configurado.
+- `src/app/(auth)/login`: dos formas de entrar con el mismo email.
+  - **Link** (`sendMagicLink`): se tiene que abrir en el mismo navegador donde se pidió.
+  - **Código** (`verifyLoginCode` → `verifyOtp({ type: "email" })`): necesario en la app instalada en iPhone, que guarda la sesión separada de Safari, así que el link abriría la sesión en Safari y no en la app.
+- `src/app/auth/confirm/route.ts`: destino del link. Acepta `code` (PKCE, lo que manda `{{ .ConfirmationURL }}`) y también `token_hash` + `type`.
+- PWA:
+  - `src/app/manifest.ts`.
+  - Íconos en `public/icons/` y `src/app/{icon,apple-icon}.png`, generados con `node scripts/generate-icons.mjs`.
+  - `public/sw.js`: service worker mínimo, sin offline. Lo registra `components/service-worker-register.tsx`, solo en producción.
+  - Headers en `next.config.ts`.
+  - El matcher del proxy excluye `manifest.webmanifest`, `sw.js` y las imágenes. Si se agregan archivos públicos nuevos sin extensión de imagen, hay que excluirlos también.
 - `src/app/(app)/`: layout con la navegación inferior (`components/bottom-nav.tsx`) y las pestañas Inicio, Rutinas, Progreso, Historial y Cuerpo. La sesión en vivo (`entrenar/[workoutId]`) va fuera de este grupo, en pantalla completa sin navegación.
 - `src/app/(app)/rutinas/`:
   - `page.tsx`: lista de rutinas, que se reordena con subir/bajar y tiene una sección de archivadas para restaurarlas.
