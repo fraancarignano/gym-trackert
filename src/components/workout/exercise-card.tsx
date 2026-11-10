@@ -1,6 +1,6 @@
 "use client";
 
-import { Minus, Plus, X } from "lucide-react";
+import { Minus, Plus, TrendingUp, X } from "lucide-react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import type { LiveExercise } from "@/lib/data/workouts";
@@ -58,6 +58,15 @@ export function ExerciseCard({
       <header className="flex items-start gap-2">
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <h2 className="font-semibold">{exercise.name}</h2>
+          {exercise.suggestIncrease && (
+            <p
+              className="flex items-center gap-1 text-sm font-medium text-primary"
+              title="La última vez llegaste al máximo del rango en todas las series con el mismo peso"
+            >
+              <TrendingUp className="size-4" aria-hidden />
+              Subí peso
+            </p>
+          )}
           <p className="text-sm text-muted-foreground">
             {exercise.target
               ? `Objetivo ${formatTarget(exercise.target.sets, exercise.target.repsMin, exercise.target.repsMax)}`

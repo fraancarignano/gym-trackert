@@ -1,8 +1,11 @@
 import "server-only";
 import { requireUser } from "@/lib/auth";
 import type { PerformedSet } from "@/lib/calc/prefill";
+import { shouldIncreaseWeight } from "@/lib/calc/progression";
+import { computeRecords, type ExerciseRecords } from "@/lib/calc/records";
 import { totalVolume } from "@/lib/calc/volume";
 import type { Equipment, MuscleGroup } from "@/lib/constants";
+import { getExerciseSessions, isBodyweightEquipment } from "@/lib/data/progress";
 
 type Supabase = Awaited<ReturnType<typeof requireUser>>["supabase"];
 
@@ -23,6 +26,10 @@ export type LiveExercise = {
   previousDate: string | null;
   /** Series ya confirmadas en esta sesión. */
   sets: SavedSet[];
+  /** Récords previos (de sesiones terminadas), para avisar al superarlos. */
+  records: ExerciseRecords;
+  /** Indicador "Subí peso" según la última sesión y el objetivo. */
+  suggestIncrease: boolean;
 };
 
 export type LiveWorkout = {
@@ -139,8 +146,9 @@ export async function loadLiveExercises(
   );
   const exerciseIds = [...new Set(sorted.map((r) => r.exercise_id))];
 
-  const [previous, targets] = await Promise.all([
+  const [previous, history, targets] = await Promise.all([
     getPreviousSets(supabase, exerciseIds, workout.id),
+    getExerciseSessions(supabase, exerciseIds, { excludeWorkoutId: workout.id }),
     workout.routineId
       ? supabase
           .from("routine_exercises")
@@ -156,6 +164,7 @@ export async function loadLiveExercises(
   return sorted.map((row) => {
     const target = targets.get(row.exercise_id);
     const prev = previous.get(row.exercise_id);
+    const isBodyweight = isBodyweightEquipment(row.exercise.equipment);
     return {
       workoutExerciseId: row.id,
       exerciseId: row.exercise_id,
@@ -172,6 +181,8 @@ export async function loadLiveExercises(
       previous: prev?.sets ?? [],
       previousDate: prev?.date ?? null,
       sets: toSavedSets(row.workout_sets),
+      records: computeRecords(history.get(row.exercise_id) ?? [], { isBodyweight }),
+      suggestIncrease: shouldIncreaseWeight(prev?.sets ?? [], target?.target_reps_max ?? null),
     };
   });
 }

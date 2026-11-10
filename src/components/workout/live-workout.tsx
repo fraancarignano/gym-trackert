@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Plus, Trash2 } from "lucide-react";
+import { ChevronLeft, Plus, Trash2, Trophy } from "lucide-react";
 import { toast } from "sonner";
 import {
   addWorkoutExercises,
@@ -24,6 +24,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { buildInitialRows, suggestSet } from "@/lib/calc/prefill";
+import { mergeRecords, setBreaksRecords } from "@/lib/calc/records";
+import { describeRecord } from "@/lib/records-format";
 import type { CatalogExercise } from "@/lib/data/exercises";
 import type { LiveExercise, LiveWorkout } from "@/lib/data/workouts";
 import { parseDecimal, toInputValue } from "@/lib/format";
@@ -129,6 +131,22 @@ export function LiveWorkoutView({
       reps: toInputValue(parsed.data.reps),
       saved: { id: result.data.id, ...parsed.data },
     });
+
+    // ¿Superó un récord? Se compara contra los récords previos y contra las
+    // otras series ya confirmadas hoy (sin contar esta misma fila).
+    const options = { isBodyweight: isBodyweight(exercise) };
+    const baseline = mergeRecords(
+      exercise.records,
+      rows.filter((r, i) => i !== rowIndex && r.saved).map((r) => r.saved!),
+      options,
+    );
+    const broken = setBreaksRecords(parsed.data, baseline, options);
+    if (broken.length > 0) {
+      toast.success(`¡Nuevo récord en ${exercise.name}!`, {
+        icon: <Trophy className="size-4 text-primary" />,
+        description: broken.map(describeRecord).join(" · "),
+      });
+    }
   }
 
   function addRow(id: string) {

@@ -2,11 +2,13 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { CircleCheck, House } from "lucide-react";
+import { CircleCheck, House, Trophy } from "lucide-react";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { buttonVariants } from "@/components/ui/button";
 import { WorkoutStats } from "@/components/workout/workout-stats";
+import { getAchievedRecords } from "@/lib/data/progress";
 import { getWorkoutDetail } from "@/lib/data/workouts";
+import { describeRecord } from "@/lib/records-format";
 import { formatDateWithWeekday, formatSet } from "@/lib/format";
 import { idSchema } from "@/lib/validation/schemas";
 
@@ -31,6 +33,7 @@ async function Summary({
   const workout = await getWorkoutDetail(workoutId);
   if (!workout) notFound();
   if (!workout.finishedAt) redirect(`/entrenar/${workout.id}`);
+  const achieved = await getAchievedRecords(workout);
 
   return (
     <div className="flex flex-col gap-6 pt-8">
@@ -48,6 +51,30 @@ async function Summary({
         setCount={workout.setCount}
         volumeKg={workout.volumeKg}
       />
+
+      {achieved.length > 0 && (
+        <section
+          aria-labelledby="records-title"
+          className="flex flex-col gap-3 rounded-xl border border-primary/40 bg-primary/5 p-4"
+        >
+          <h2 id="records-title" className="flex items-center gap-2 font-semibold">
+            <Trophy className="size-5 text-primary" aria-hidden />
+            Récords logrados
+          </h2>
+          <ul className="flex flex-col gap-2">
+            {achieved.map((item) => (
+              <li key={item.exerciseName} className="flex flex-col gap-0.5">
+                <span className="font-medium">{item.exerciseName}</span>
+                {item.records.map((record) => (
+                  <span key={record.kind} className="text-sm text-muted-foreground">
+                    {describeRecord(record)}
+                  </span>
+                ))}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <ul className="flex flex-col divide-y divide-border rounded-xl border border-border">
         {workout.exercises.map((exercise) => (

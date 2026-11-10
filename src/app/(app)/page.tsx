@@ -4,11 +4,15 @@ import { ChevronRight, ClipboardList, LogOut, Play, Plus } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { PageHeader } from "@/components/page-header";
+import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { StartWorkoutButton } from "@/components/workout/start-workout-button";
+import { sortRoutinesForHome } from "@/lib/calc/suggested-routine";
+import { getRoutineLastDone } from "@/lib/data/progress";
 import { getRoutines } from "@/lib/data/routines";
 import { getInProgressWorkout, getLastFinishedWorkout } from "@/lib/data/workouts";
 import {
+  formatDate,
   formatDateWithWeekday,
   formatDuration,
   formatNumber,
@@ -38,12 +42,18 @@ export default function HomePage() {
 }
 
 async function HomeContent() {
-  const [inProgress, routines, last] = await Promise.all([
+  const [inProgress, routines, last, lastDone] = await Promise.all([
     getInProgressWorkout(),
     getRoutines(),
     getLastFinishedWorkout(),
+    getRoutineLastDone(),
   ]);
-  const active = routines.filter((r) => !r.isArchived);
+  // Rutina sugerida: primero las nunca hechas, después la que hace más que no se hace.
+  const active = sortRoutinesForHome(
+    routines
+      .filter((r) => !r.isArchived)
+      .map((r, position) => ({ ...r, position, lastDoneAt: lastDone.get(r.id) ?? null })),
+  );
 
   return (
     <div className="flex flex-col gap-8">
@@ -82,15 +92,22 @@ async function HomeContent() {
             />
           ) : (
             <ul className="flex flex-col gap-3">
-              {active.map((routine) => (
+              {active.map((routine, index) => (
                 <li key={routine.id}>
                   <form action={startWorkout.bind(null, routine.id)}>
                     <StartWorkoutButton>
-                      <span className="truncate font-medium">{routine.name}</span>
+                      <span className="flex items-center gap-2">
+                        <span className="truncate font-medium">{routine.name}</span>
+                        {index === 0 && <Badge>Sugerida</Badge>}
+                      </span>
                       <span className="text-sm text-muted-foreground">
                         {routine.exerciseCount === 1
                           ? "1 ejercicio"
                           : `${routine.exerciseCount} ejercicios`}
+                        {" · "}
+                        {routine.lastDoneAt
+                          ? `última vez ${formatDate(routine.lastDoneAt)}`
+                          : "nunca la hiciste"}
                       </span>
                     </StartWorkoutButton>
                   </form>

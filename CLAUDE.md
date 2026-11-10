@@ -9,7 +9,7 @@ PWA personal, mobile-first, para registrar entrenamientos de gimnasio y ver la p
 - [x] Fase 0: base del proyecto (Next.js, shadcn/ui, Supabase, schema + RLS, seed, magic link, navegación inferior)
 - [x] Fase 1: ejercicios y rutinas
 - [x] Fase 2: sesión en vivo e historial
-- [ ] Fase 3: progreso y récords
+- [x] Fase 3: progreso y récords
 - [ ] Fase 4: peso y medidas
 - [ ] Fase 5: PWA y deploy en Vercel
 
@@ -65,7 +65,23 @@ npm test           # vitest run
 - `src/lib/data/`: lecturas del servidor (`server-only`). Arrancan con `requireUser()` (`src/lib/auth.ts`) y devuelven tipos de dominio en camelCase.
 - `src/lib/validation/schemas.ts`: esquemas Zod compartidos entre cliente y Server Actions.
 - `src/lib/action-result.ts`: las Server Actions que se llaman desde eventos devuelven `ActionResult` (`{ ok, data } | { ok: false, error }`) y no tiran excepciones.
-- `src/lib/calc/`: cálculos puros (1RM, volumen, récords, rutina sugerida), con tests `*.test.ts`.
+- `src/lib/calc/`: cálculos puros, con tests `*.test.ts`:
+  - `one-rep-max.ts`: Epley.
+  - `records.ts`: `computeRecords`, `setBreaksRecords`, `sessionBreaksRecords`, `mergeRecords`.
+  - `progression.ts`: "Subí peso".
+  - `suggested-routine.ts`: orden de Inicio.
+  - `chart-series.ts`: un punto por sesión y filtro por rango.
+  - `acceptance.test.ts`: tiene los mismos datos de prueba que se cargaron en la base, con los valores calculados a mano.
+- `src/lib/data/progress.ts`:
+  - Sesiones terminadas por ejercicio (`getExerciseSessions`, que pagina de a 1000 filas).
+  - Lista y detalle de Progreso.
+  - Récords logrados por una sesión (`getAchievedRecords`).
+  - Última sesión de cada rutina.
+- `src/app/(app)/progreso/`: lista por uso reciente y `[exerciseId]/` con los récords, los gráficos (`components/progress/`, Recharts) y las últimas sesiones.
+- Gráficos:
+  - Hay uno por métrica, cada uno con una sola serie: sin leyenda y sin eje doble.
+  - Color `--chart-series` (`#3987e5` en oscuro), validado con el skill dataviz.
+  - Líneas de 2px con puntos r=4 y un anillo del color de la superficie. Columnas de 24px como máximo, con 4px de radio.
 - Componentes reutilizables:
   - `NumberStepper` (− / + grande con teclado numérico, enteros).
   - `ValueStepper` (− / + basado en texto, con coma decimal; para peso y reps).
@@ -130,6 +146,15 @@ npm test           # vitest run
 - **Quitar serie:** quita la última fila. Si estaba confirmada, la borra después de pedir confirmación. Un ejercicio solo se puede quitar de la sesión si no tiene series confirmadas.
 - **Peso corporal:** si el ejercicio es de peso corporal y no tiene historial, el peso arranca en 0.
 - **Botones +/-:** peso de a 2,5 kg (`WEIGHT_STEP_KG`) y reps de a 1.
+
+## Récords (decisiones)
+
+- **Base de comparación:** se usan solo sesiones terminadas. En vivo, cada serie se compara contra los récords previos combinados con las otras series ya confirmadas hoy (`mergeRecords`).
+- **Sin historial no hay aviso:** la primera vez que se hace un ejercicio no avisa récords. Igualar un récord no cuenta como récord.
+- **Peso corporal:** las series con peso 0 solo cuentan para reps máximas, y solo en ejercicios con equipo "Peso corporal". Las series con lastre (peso > 0) cuentan para peso, 1RM y volumen.
+- **Récord de volumen:** se evalúa al terminar, en el resumen.
+- **"Subí peso":** requiere objetivo de rutina y peso > 0.
+- **Datos de prueba:** las sesiones de prueba de la Fase 3 tienen `notes = 'DATOS DE PRUEBA'`.
 
 ## Fuera de alcance (no implementar)
 
